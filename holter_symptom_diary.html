@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Holter Symptom Diary</title>
+<style>
+  :root{
+    --navy:#1f2d5c;
+    --purple:#6a5a9c;
+    --teal:#4f9d9d;
+    --lav-bg:#e9e7f5;
+    --teal-bg:#e3f1f0;
+    --gray-bg:#f4f5f7;
+    --border:#d3d6de;
+    --danger:#c1443c;
+    --ok:#2f8f5b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--gray-bg); color:#1c1e26; padding-bottom:24px;
+  }
+  header{
+    background:var(--navy); color:#fff; padding:16px 16px 14px;
+    position:sticky; top:0; z-index:20; box-shadow:0 2px 6px rgba(0,0,0,.15);
+  }
+  header h1{margin:0; font-size:1.15rem; font-weight:700;}
+  header p{margin:2px 0 0; font-size:.75rem; opacity:.85;}
+  .tabs{display:flex; background:#fff; border-bottom:1px solid var(--border); position:sticky; top:60px; z-index:19;}
+  .tab{flex:1; text-align:center; padding:12px 4px; font-size:.85rem; font-weight:600; color:#888; border-bottom:3px solid transparent;}
+  .tab.active{color:var(--navy); border-bottom-color:var(--navy);}
+  main{max-width:640px; margin:0 auto; padding:14px;}
+  section{display:none;}
+  section.active{display:block;}
+
+  .card{background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:14px;}
+  .card h2{margin:0 0 10px; font-size:1rem; color:var(--navy);}
+  .row{display:flex; gap:10px;}
+  .row > div{flex:1;}
+  label.field-label{display:block; font-size:.78rem; font-weight:600; color:#555; margin-bottom:4px;}
+  input[type=text], input[type=date], input[type=time], textarea{
+    width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; font-size:1rem; background:#fff;
+  }
+  textarea{resize:vertical; min-height:50px;}
+
+  .nowbtn{
+    width:100%; margin:8px 0 4px; padding:10px; border:none; border-radius:8px;
+    background:var(--teal-bg); color:var(--teal); font-weight:700; font-size:.85rem;
+  }
+
+  .choice-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;}
+  .choice{
+    border:2px solid var(--border); border-radius:10px; padding:10px 8px; font-size:.85rem;
+    text-align:center; background:#fff; user-select:none; font-weight:600; color:#333;
+  }
+  .choice.activity{background:var(--lav-bg);}
+  .choice.symptom{background:var(--teal-bg);}
+  .choice.selected.activity{border-color:var(--purple); background:var(--purple); color:#fff;}
+  .choice.selected.symptom{border-color:var(--teal); background:var(--teal); color:#fff;}
+  .choice.none-choice{grid-column:1 / -1;}
+
+  .other-input{margin-top:6px; display:none;}
+  .other-input.show{display:block;}
+
+  .save-btn{
+    width:100%; padding:14px; margin-top:14px; border:none; border-radius:10px;
+    background:var(--ok); color:#fff; font-size:1rem; font-weight:700;
+  }
+  .save-btn:active{opacity:.85;}
+  .cancel-btn{
+    width:100%; padding:12px; margin-top:8px; border:none; border-radius:10px;
+    background:#eee; color:#555; font-size:.9rem; font-weight:600;
+  }
+
+  .entry{
+    background:#fff; border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px;
+    display:flex; align-items:flex-start; gap:10px;
+  }
+  .entry .num{
+    background:var(--navy); color:#fff; font-weight:700; font-size:.8rem; border-radius:50%;
+    width:26px; height:26px; min-width:26px; display:flex; align-items:center; justify-content:center; margin-top:2px;
+  }
+  .entry .info{flex:1;}
+  .entry .dt{font-weight:700; font-size:.9rem; color:var(--navy);}
+  .entry .tags{margin-top:4px; display:flex; flex-wrap:wrap; gap:4px;}
+  .entry .tag{font-size:.72rem; padding:2px 7px; border-radius:20px; font-weight:600;}
+  .entry .tag.act{background:var(--lav-bg); color:var(--purple);}
+  .entry .tag.sym{background:var(--teal-bg); color:var(--teal);}
+  .entry .notes{font-size:.78rem; color:#666; margin-top:4px; font-style:italic;}
+  .entry .actions{display:flex; flex-direction:column; gap:6px;}
+  .entry .actions button{
+    border:none; background:none; font-size:1.05rem; padding:2px 4px; color:#888;
+  }
+
+  .empty{text-align:center; color:#999; padding:30px 10px; font-size:.9rem;}
+
+  .modal-bg{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50;
+    align-items:flex-end; justify-content:center;
+  }
+  .modal-bg.show{display:flex;}
+  .modal{
+    background:#fff; width:100%; max-width:640px; max-height:92vh; overflow-y:auto;
+    border-radius:16px 16px 0 0; padding:16px;
+  }
+  .modal h2{margin-top:0;}
+
+  .toolbar{display:flex; gap:8px; margin-bottom:10px;}
+  .toolbar button{
+    flex:1; padding:10px; border-radius:8px; border:1px solid var(--border); background:#fff;
+    font-size:.8rem; font-weight:600; color:var(--navy);
+  }
+
+  .patient-fields{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .patient-fields .full{grid-column:1/-1;}
+
+  #transcribeText{
+    width:100%; min-height:220px; font-family:monospace; font-size:.78rem; padding:10px;
+    border:1px solid var(--border); border-radius:8px;
+  }
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#222; color:#fff;
+    padding:9px 18px; border-radius:20px; font-size:.85rem; opacity:0; transition:opacity .25s; z-index:60; pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+
+  .lock-screen{
+    position:fixed; inset:0; background:var(--navy); z-index:100;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .lock-card{
+    background:#fff; border-radius:14px; padding:26px 22px; width:100%; max-width:340px; text-align:center;
+  }
+  .lock-card h2{margin:0 0 6px; color:var(--navy); font-size:1.1rem;}
+  .lock-card p{margin:0 0 16px; font-size:.8rem; color:#777;}
+  .lock-card input{
+    width:100%; padding:12px; border:1px solid var(--border); border-radius:8px; font-size:1.1rem;
+    text-align:center; letter-spacing:2px; margin-bottom:10px;
+  }
+  .lock-card button{
+    width:100%; padding:13px; border:none; border-radius:8px; background:var(--navy); color:#fff;
+    font-size:1rem; font-weight:700;
+  }
+  .lock-error{color:var(--danger); font-size:.8rem; min-height:1.2em; margin-top:8px; font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- Lock screen -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-card">
+    <h2>🔒 Symptom Diary Locked</h2>
+    <p>Enter your passcode to continue</p>
+    <input type="password" id="lockInput" inputmode="numeric" placeholder="Passcode" autocomplete="off">
+    <button id="lockUnlockBtn">Unlock</button>
+    <div class="lock-error" id="lockError"></div>
+  </div>
+</div>
+
+<div id="appWrap" style="display:none">
+
+<header>
+  <h1>Holter Symptom Diary</h1>
+  <p id="headerSub">Personal digital log — for your reference while wearing the monitor</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="log">Log Symptom</div>
+  <div class="tab" data-tab="entries">My Entries</div>
+  <div class="tab" data-tab="info">Patient Info</div>
+</div>
+
+<main>
+
+  <!-- LOG TAB -->
+  <section id="log" class="active">
+    <div class="card">
+      <h2>When did this happen?</h2>
+      <button class="nowbtn" id="useNowBtn">⏱ Use current date &amp; time</button>
+      <div class="row">
+        <div>
+          <label class="field-label">Date</label>
+          <input type="date" id="entryDate">
+        </div>
+        <div>
+          <label class="field-label">Time</label>
+          <input type="time" id="entryTime">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Activity <span style="font-weight:400;color:#888;font-size:.75rem;">(select one)</span></h2>
+      <div class="choice-grid" id="activityGrid"></div>
+      <div class="other-input" id="activityOtherWrap">
+        <input type="text" id="activityOtherText" placeholder="Describe activity...">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Symptom <span style="font-weight:400;color:#888;font-size:.75rem;">(select at least one)</span></h2>
+      <div class="choice-grid" id="symptomGrid"></div>
+    </div>
+
+    <div class="card">
+      <h2>Notes <span style="font-weight:400;color:#888;font-size:.75rem;">(optional, for your memory)</span></h2>
+      <textarea id="entryNotes" placeholder="Anything else worth remembering..."></textarea>
+    </div>
+
+    <button class="save-btn" id="saveEntryBtn">Save Entry</button>
+  </section>
+
+  <!-- ENTRIES TAB -->
+  <section id="entries">
+    <div class="toolbar">
+      <button id="transcribeBtn">📋 Transcribe view</button>
+      <button id="clearAllBtn">🗑 Clear all</button>
+    </div>
+    <div id="entriesList"></div>
+  </section>
+
+  <!-- INFO TAB -->
+  <section id="info">
+    <div class="card">
+      <h2>Patient &amp; Monitoring Info</h2>
+      <div class="patient-fields">
+        <div class="full">
+          <label class="field-label">Patient name</label>
+          <input type="text" id="pName">
+        </div>
+        <div>
+          <label class="field-label">Device serial #</label>
+          <input type="text" id="pSerial">
+        </div>
+        <div>
+          <label class="field-label">Physician</label>
+          <input type="text" id="pPhysician">
+        </div>
+        <div>
+          <label class="field-label">Monitor start date</label>
+          <input type="date" id="pStartDate">
+        </div>
+        <div>
+          <label class="field-label">Monitor start time</label>
+          <input type="time" id="pStartTime">
+        </div>
+        <div>
+          <label class="field-label">Monitor end date</label>
+          <input type="date" id="pEndDate">
+        </div>
+        <div>
+          <label class="field-label">Monitor end time</label>
+          <input type="time" id="pEndTime">
+        </div>
+      </div>
+      <button class="save-btn" id="saveInfoBtn">Save Info</button>
+      <button class="cancel-btn" id="lockAppBtn" style="margin-top:8px;">🔒 Lock App Now</button>
+    </div>
+    <p style="font-size:.75rem;color:#888;text-align:center;">
+      This app stores everything only on this device's browser. It's a personal aid to help you
+      remember details so you can transcribe them onto the official paper diary that ships back
+      with your monitor. It is not sent to your doctor or Boston Scientific.
+    </p>
+  </section>
+
+</main>
+
+</div>
+
+<!-- Edit modal -->
+<div class="modal-bg" id="editModalBg">
+  <div class="modal">
+    <h2>Edit Entry</h2>
+    <div class="row">
+      <div>
+        <label class="field-label">Date</label>
+        <input type="date" id="editDate">
+      </div>
+      <div>
+        <label class="field-label">Time</label>
+        <input type="time" id="editTime">
+      </div>
+    </div>
+    <h2 style="margin-top:14px;">Activity</h2>
+    <div class="choice-grid" id="editActivityGrid"></div>
+    <div class="other-input" id="editActivityOtherWrap">
+      <input type="text" id="editActivityOtherText" placeholder="Describe activity...">
+    </div>
+    <h2 style="margin-top:14px;">Symptom</h2>
+    <div class="choice-grid" id="editSymptomGrid"></div>
+    <h2 style="margin-top:14px;">Notes</h2>
+    <textarea id="editNotes"></textarea>
+    <button class="save-btn" id="editSaveBtn">Save Changes</button>
+    <button class="cancel-btn" id="editCancelBtn">Cancel</button>
+  </div>
+</div>
+
+<!-- Transcribe modal -->
+<div class="modal-bg" id="transcribeModalBg">
+  <div class="modal">
+    <h2>Transcribe to Paper Diary</h2>
+    <p style="font-size:.8rem;color:#666;">
+      Entries are numbered to match the paper diary rows. Copy this list, or go row by row and
+      check the matching boxes on your paper form.
+    </p>
+    <textarea id="transcribeText" readonly></textarea>
+    <button class="save-btn" id="copyTranscribeBtn">Copy to Clipboard</button>
+    <button class="cancel-btn" id="closeTranscribeBtn">Close</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ACTIVITIES = ["Exercising","Sitting","Climbing stairs","Walking","Taking medications","Other","Eating"];
+const SYMPTOMS = ["None or accidental push","Light-headedness","Rapid or fast beats","Flutter or skipped beats","Shortness of breath","Chest pain or pressure","Dizziness","Tired or fatigued","Passed out"];
+
+const LS_ENTRIES = "holterEntries";
+const LS_INFO = "holterPatientInfo";
+
+// ---------- Lock screen ----------
+// CHANGE THIS to your own passcode before you start using the app.
+const PASSCODE = "changeme";
+const LS_AUTH = "holterAuthed";
+
+function checkAuth(){
+  const authed = sessionStorage.getItem(LS_AUTH) === "yes" || localStorage.getItem(LS_AUTH) === "yes";
+  document.getElementById('lockScreen').style.display = authed ? 'none' : 'flex';
+  document.getElementById('appWrap').style.display = authed ? 'block' : 'none';
+  if(!authed){
+    document.getElementById('lockInput').value = '';
+    document.getElementById('lockError').textContent = '';
+  }
+}
+function attemptUnlock(){
+  const val = document.getElementById('lockInput').value;
+  if(val === PASSCODE){
+    localStorage.setItem(LS_AUTH, "yes");
+    checkAuth();
+  } else {
+    document.getElementById('lockError').textContent = 'Incorrect passcode';
+    document.getElementById('lockInput').value = '';
+    document.getElementById('lockInput').focus();
+  }
+}
+document.getElementById('lockUnlockBtn').addEventListener('click', attemptUnlock);
+document.getElementById('lockInput').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') attemptUnlock();
+});
+checkAuth();
+
+function loadEntries(){
+  try{ return JSON.parse(localStorage.getItem(LS_ENTRIES)) || []; }catch(e){ return []; }
+}
+function saveEntries(list){ localStorage.setItem(LS_ENTRIES, JSON.stringify(list)); }
+function loadInfo(){
+  try{ return JSON.parse(localStorage.getItem(LS_INFO)) || {}; }catch(e){ return {}; }
+}
+function saveInfo(obj){ localStorage.setItem(LS_INFO, JSON.stringify(obj)); }
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+function pad(n){ return n.toString().padStart(2,'0'); }
+function nowDateStr(){
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function nowTimeStr(){
+  const d = new Date();
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fmtDate(iso){
+  if(!iso) return "";
+  const [y,m,d] = iso.split('-');
+  return `${m}/${d}/${y}`;
+}
+function fmtTime(t){
+  if(!t) return "";
+  let [h,m] = t.split(':').map(Number);
+  const ampm = h>=12 ? 'PM':'AM';
+  h = h%12; if(h===0) h=12;
+  return `${h}:${pad(m)} ${ampm}`;
+}
+
+// ---------- Tabs ----------
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+    if(tab.dataset.tab === 'entries') renderEntries();
+    if(tab.dataset.tab === 'log'){
+      if(!document.getElementById('entryDate').value) document.getElementById('entryDate').value = nowDateStr();
+      if(!document.getElementById('entryTime').value) document.getElementById('entryTime').value = nowTimeStr();
+    }
+  });
+});
+// auto-fill date/time on initial load since Log tab is active by default
+if(!document.getElementById('entryDate').value) document.getElementById('entryDate').value = nowDateStr();
+if(!document.getElementById('entryTime').value) document.getElementById('entryTime').value = nowTimeStr();
+// ---------- Build choice grids ----------
+function buildChoiceGrid(container, items, type, selectedGetter, onToggle){
+  container.innerHTML = '';
+  items.forEach(item=>{
+    const div = document.createElement('div');
+    div.className = 'choice ' + type;
+    if(item === "None or accidental push") div.classList.add('none-choice');
+    div.textContent = item;
+    div.dataset.value = item;
+    container.appendChild(div);
+    div.addEventListener('click', ()=> onToggle(item, div));
+  });
+}
+
+// ----- Log tab state -----
+let logActivity = null;
+let logSymptoms = new Set();
+
+buildChoiceGrid(document.getElementById('activityGrid'), ACTIVITIES, 'activity', null, (item, el)=>{
+  logActivity = item;
+  document.querySelectorAll('#activityGrid .choice').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  const otherWrap = document.getElementById('activityOtherWrap');
+  otherWrap.classList.toggle('show', item === 'Other');
+});
+
+buildChoiceGrid(document.getElementById('symptomGrid'), SYMPTOMS, 'symptom', null, (item, el)=>{
+  if(item === "None or accidental push"){
+    logSymptoms.clear();
+    document.querySelectorAll('#symptomGrid .choice').forEach(c=>c.classList.remove('selected'));
+    logSymptoms.add(item);
+    el.classList.add('selected');
+    return;
+  }
+  // deselect "none" if selecting a real symptom
+  const noneEl = [...document.querySelectorAll('#symptomGrid .choice')].find(c=>c.dataset.value === "None or accidental push");
+  if(logSymptoms.has("None or accidental push")){
+    logSymptoms.delete("None or accidental push");
+    noneEl.classList.remove('selected');
+  }
+  if(logSymptoms.has(item)){
+    logSymptoms.delete(item);
+    el.classList.remove('selected');
+  } else {
+    logSymptoms.add(item);
+    el.classList.add('selected');
+  }
+});
+
+document.getElementById('useNowBtn').addEventListener('click', ()=>{
+  document.getElementById('entryDate').value = nowDateStr();
+  document.getElementById('entryTime').value = nowTimeStr();
+});
+
+document.getElementById('saveEntryBtn').addEventListener('click', ()=>{
+  const date = document.getElementById('entryDate').value;
+  const time = document.getElementById('entryTime').value;
+  const isNoneOnly = logSymptoms.has("None or accidental push");
+  if(!date || !time){ showToast("Please set a date and time"); return; }
+  if(logSymptoms.size === 0){ showToast("Please select at least one symptom"); return; }
+  if(!logActivity && !isNoneOnly){ showToast("Please select an activity"); return; }
+
+  const entries = loadEntries();
+  entries.push({
+    id: Date.now(),
+    date, time,
+    activity: logActivity,
+    activityOther: logActivity === 'Other' ? document.getElementById('activityOtherText').value.trim() : '',
+    symptoms: Array.from(logSymptoms),
+    notes: document.getElementById('entryNotes').value.trim()
+  });
+  saveEntries(entries);
+
+  // reset form
+  logActivity = null;
+  logSymptoms.clear();
+  document.querySelectorAll('#activityGrid .choice, #symptomGrid .choice').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('activityOtherWrap').classList.remove('show');
+  document.getElementById('activityOtherText').value = '';
+  document.getElementById('entryNotes').value = '';
+  document.getElementById('entryDate').value = '';
+  document.getElementById('entryTime').value = '';
+
+  showToast("Entry #" + entries.length + " saved");
+});
+
+// ---------- Entries list ----------
+function renderEntries(){
+  const entries = loadEntries();
+  const list = document.getElementById('entriesList');
+  list.innerHTML = '';
+  if(entries.length === 0){
+    list.innerHTML = '<div class="empty">No entries yet. Go to the "Log Symptom" tab to add one.</div>';
+    return;
+  }
+  entries
+    .slice()
+    .sort((a,b)=> (a.date+a.time).localeCompare(b.date+b.time))
+    .forEach((entry, idx)=>{
+      const div = document.createElement('div');
+      div.className = 'entry';
+      const actLabel = entry.activity === 'Other' && entry.activityOther ? `Other: ${entry.activityOther}` : entry.activity;
+      div.innerHTML = `
+        <div class="num">${idx+1}</div>
+        <div class="info">
+          <div class="dt">${fmtDate(entry.date)} · ${fmtTime(entry.time)}</div>
+          <div class="tags">
+            ${actLabel ? `<span class="tag act">${actLabel}</span>` : ''}
+            ${entry.symptoms.map(s=>`<span class="tag sym">${s}</span>`).join('')}
+          </div>
+          ${entry.notes ? `<div class="notes">${entry.notes}</div>` : ''}
+        </div>
+        <div class="actions">
+          <button data-edit="${entry.id}">✏️</button>
+          <button data-del="${entry.id}">🗑️</button>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+
+  list.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openEditModal(Number(btn.dataset.edit)));
+  });
+  list.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(!confirm('Delete this entry?')) return;
+      let entries = loadEntries();
+      entries = entries.filter(e => e.id !== Number(btn.dataset.del));
+      saveEntries(entries);
+      renderEntries();
+      showToast('Entry deleted');
+    });
+  });
+}
+
+document.getElementById('clearAllBtn').addEventListener('click', ()=>{
+  if(!confirm('Delete ALL logged entries? This cannot be undone.')) return;
+  saveEntries([]);
+  renderEntries();
+  showToast('All entries cleared');
+});
+
+// ---------- Edit modal ----------
+let editingId = null;
+let editActivity = null;
+let editSymptoms = new Set();
+
+buildChoiceGrid(document.getElementById('editActivityGrid'), ACTIVITIES, 'activity', null, (item, el)=>{
+  editActivity = item;
+  document.querySelectorAll('#editActivityGrid .choice').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('editActivityOtherWrap').classList.toggle('show', item === 'Other');
+});
+
+buildChoiceGrid(document.getElementById('editSymptomGrid'), SYMPTOMS, 'symptom', null, (item, el)=>{
+  if(item === "None or accidental push"){
+    editSymptoms.clear();
+    document.querySelectorAll('#editSymptomGrid .choice').forEach(c=>c.classList.remove('selected'));
+    editSymptoms.add(item);
+    el.classList.add('selected');
+    return;
+  }
+  const noneEl = [...document.querySelectorAll('#editSymptomGrid .choice')].find(c=>c.dataset.value === "None or accidental push");
+  if(editSymptoms.has("None or accidental push")){
+    editSymptoms.delete("None or accidental push");
+    noneEl.classList.remove('selected');
+  }
+  if(editSymptoms.has(item)){
+    editSymptoms.delete(item);
+    el.classList.remove('selected');
+  } else {
+    editSymptoms.add(item);
+    el.classList.add('selected');
+  }
+});
+
+function openEditModal(id){
+  const entries = loadEntries();
+  const entry = entries.find(e=>e.id===id);
+  if(!entry) return;
+  editingId = id;
+  document.getElementById('editDate').value = entry.date;
+  document.getElementById('editTime').value = entry.time;
+  document.getElementById('editNotes').value = entry.notes || '';
+  editActivity = entry.activity;
+  editSymptoms = new Set(entry.symptoms);
+
+  document.querySelectorAll('#editActivityGrid .choice').forEach(c=>{
+    c.classList.toggle('selected', c.dataset.value === entry.activity);
+  });
+  document.getElementById('editActivityOtherWrap').classList.toggle('show', entry.activity === 'Other');
+  document.getElementById('editActivityOtherText').value = entry.activityOther || '';
+
+  document.querySelectorAll('#editSymptomGrid .choice').forEach(c=>{
+    c.classList.toggle('selected', editSymptoms.has(c.dataset.value));
+  });
+
+  document.getElementById('editModalBg').classList.add('show');
+}
+
+document.getElementById('editCancelBtn').addEventListener('click', ()=>{
+  document.getElementById('editModalBg').classList.remove('show');
+});
+
+document.getElementById('editSaveBtn').addEventListener('click', ()=>{
+  const date = document.getElementById('editDate').value;
+  const time = document.getElementById('editTime').value;
+  const isNoneOnly = editSymptoms.has("None or accidental push");
+  if(!date || !time){ showToast("Please set a date and time"); return; }
+  if(editSymptoms.size === 0){ showToast("Please select at least one symptom"); return; }
+  if(!editActivity && !isNoneOnly){ showToast("Please select an activity"); return; }
+
+  let entries = loadEntries();
+  entries = entries.map(e=>{
+    if(e.id === editingId){
+      return {
+        ...e, date, time,
+        activity: editActivity,
+        activityOther: editActivity === 'Other' ? document.getElementById('editActivityOtherText').value.trim() : '',
+        symptoms: Array.from(editSymptoms),
+        notes: document.getElementById('editNotes').value.trim()
+      };
+    }
+    return e;
+  });
+  saveEntries(entries);
+  document.getElementById('editModalBg').classList.remove('show');
+  renderEntries();
+  showToast('Entry updated');
+});
+
+// ---------- Transcribe view ----------
+document.getElementById('transcribeBtn').addEventListener('click', ()=>{
+  const entries = loadEntries().slice().sort((a,b)=> (a.date+a.time).localeCompare(b.date+b.time));
+  let text = '';
+  entries.forEach((e, idx)=>{
+    const actLabel = e.activity === 'Other' && e.activityOther ? `Other (${e.activityOther})` : e.activity;
+    text += `${idx+1}. ${fmtDate(e.date)}  ${fmtTime(e.time)}\n`;
+    if(actLabel) text += `   Activity: ${actLabel}\n`;
+    text += `   Symptom: ${e.symptoms.join(', ')}\n`;
+    if(e.notes) text += `   Notes: ${e.notes}\n`;
+    text += `\n`;
+  });
+  if(!text) text = 'No entries logged yet.';
+  document.getElementById('transcribeText').value = text;
+  document.getElementById('transcribeModalBg').classList.add('show');
+});
+document.getElementById('closeTranscribeBtn').addEventListener('click', ()=>{
+  document.getElementById('transcribeModalBg').classList.remove('show');
+});
+document.getElementById('copyTranscribeBtn').addEventListener('click', ()=>{
+  const ta = document.getElementById('transcribeText');
+  ta.select();
+  ta.setSelectionRange(0, 999999);
+  try{
+    document.execCommand('copy');
+    showToast('Copied to clipboard');
+  }catch(e){
+    navigator.clipboard?.writeText(ta.value).then(()=>showToast('Copied to clipboard'));
+  }
+});
+
+// ---------- Patient info ----------
+function loadInfoToForm(){
+  const info = loadInfo();
+  document.getElementById('pName').value = info.name || '';
+  document.getElementById('pSerial').value = info.serial || '';
+  document.getElementById('pPhysician').value = info.physician || '';
+  document.getElementById('pStartDate').value = info.startDate || '';
+  document.getElementById('pStartTime').value = info.startTime || '';
+  document.getElementById('pEndDate').value = info.endDate || '';
+  document.getElementById('pEndTime').value = info.endTime || '';
+}
+document.getElementById('saveInfoBtn').addEventListener('click', ()=>{
+  saveInfo({
+    name: document.getElementById('pName').value.trim(),
+    serial: document.getElementById('pSerial').value.trim(),
+    physician: document.getElementById('pPhysician').value.trim(),
+    startDate: document.getElementById('pStartDate').value,
+    startTime: document.getElementById('pStartTime').value,
+    endDate: document.getElementById('pEndDate').value,
+    endTime: document.getElementById('pEndTime').value,
+  });
+  showToast('Patient info saved');
+});
+
+document.getElementById('lockAppBtn').addEventListener('click', ()=>{
+  localStorage.removeItem(LS_AUTH);
+  sessionStorage.removeItem(LS_AUTH);
+  checkAuth();
+});
+
+// ---------- Init ----------
+loadInfoToForm();
+renderEntries();
+</script>
+</body>
+</html>
